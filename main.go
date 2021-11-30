@@ -6,11 +6,25 @@ import (
 	"log"
 	"net"
 	"server_order/server"
+	"server_order/server_common/comutil"
 	"server_order/server_common/protobuf/serverorder"
 )
 
 func main()  {
-	grpcUrl := ":10001"
+	grpcUrl := ":10003"
+
+	//服务租约
+	var endpoints = []string{"192.168.59.131:2379"}
+	_, err := comutil.NewServiceRegister(endpoints, "server_order", grpcUrl, 5)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	////监听续租相应chan
+	//go ser.ListenLeaseRespChan()
+	//select {
+	//	case <-time.After(20 * time.Second):
+	//    ser.Close()
+	//}
 
 	//初始化
 	lis, err := net.Listen("tcp", grpcUrl)
