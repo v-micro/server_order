@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	 "github.com/grpc-ecosystem/go-grpc-middleware/tracing/opentracing"
 	"google.golang.org/grpc"
 	"log"
 	"net"
@@ -11,7 +12,9 @@ import (
 )
 
 func main()  {
-	grpcUrl := ":10003"
+	var servOpts []grpc.ServerOption
+	var grpcUrl = ":3333"
+
 
 	//服务租约
 	var endpoints = []string{"192.168.59.131:2379"}
@@ -19,17 +22,23 @@ func main()  {
 	if err != nil {
 		log.Fatalln(err)
 	}
-	////监听续租相应chan
+	//监听续租相应chan
 	//go ser.ListenLeaseRespChan()
-	//select {
-	//	case <-time.After(20 * time.Second):
-	//    ser.Close()
-	//}
+
+	//链路全局化
+	tracer, closer, err := comutil.InitJaeger("server_order","192.168.59.131:6831")
+	if err != nil {
+		panic(fmt.Sprintf("ERROR: cannot init Jaeger: %v\n", err))
+	}
+	defer closer.Close()
+	servOpts = append(servOpts,grpc.UnaryInterceptor(grpc_opentracing.UnaryServerInterceptor(grpc_opentracing.WithTracer(tracer))))
 
 	//初始化
 	lis, err := net.Listen("tcp", grpcUrl)
 	if err != nil {log.Fatalf("启动失败: %v", err)}
-	s := grpc.NewServer()
+
+	//新启动rpc服务
+	s := grpc.NewServer(servOpts...)
 
 	//服务注入
 	serverorder.RegisterPingServer(s,&server.ServerPing{})
